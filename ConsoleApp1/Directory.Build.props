@@ -1,0 +1,9 @@
+<Project>
+    <PropertyGroup>
+	    <RepositoryUrl>https://github.com/runenilsenoe/Nuget_Publishing_Demo</RepositoryUrl>
+	    <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+    <PropertyGroup>
+        <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    </PropertyGroup>
+</Project>
