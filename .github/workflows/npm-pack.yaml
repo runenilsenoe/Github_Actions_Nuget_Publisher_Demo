@@ -1,0 +1,64 @@
+name: Publish package to GitHub Packages
+on:
+  push:
+    branches: [main]
+    # Publish semver tags as releases.
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+jobs:
+  npm__nuget_publish:
+    #if: ! github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for checkout and tag
+      pull-requests: write  # for comments
+      packages: write # for publish
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup .NET Core @ Latest
+        uses: actions/setup-dotnet@v1
+        with:
+          source-url: https://nuget.pkg.github.com/runenilsenoe/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: dotnet tool Install
+        run: dotnet tool restore
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: "5.x"
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.9.7
+        with:
+          useConfigFile: true
+          configFilePath: GitVersion.yml
+      - name: Display GitVersion outputs
+        run: |
+          echo "SemVer: ${{ steps.gitversion.outputs.semVer }}"
+          echo "FullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}"
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "16.x"
+          registry-url: "https://npm.pkg.github.com"
+          # Defaults to the user or organization that owns the workflow file
+          scope: "@runenilsenoe"
+      - name: Configure git
+        run: |
+          git config user.email "rune@skytechnorge.com"
+          git config user.name "runenilsenoe"
+      - name: Build solution and generate NuGet packages
+        working-directory: ConsoleApp1
+        run: |
+          dotnet pack ConsoleApp1.sln -c Release -o out /p:Version=${{ steps.gitversion.outputs.semVer }}
+      - name: Push generated packages to GitHub registry
+        working-directory: ConsoleApp1
+        run: dotnet nuget push **/*.nupkg --skip-duplicate
+        env:
+          NUGET_AUTH_TOKEN: ${{ github.token }}
